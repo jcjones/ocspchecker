@@ -138,6 +138,33 @@ func parseResponse(response []byte, issuer *x509.Certificate) error {
 	} else {
 		log.Println("Certificate Status Revoked")
 	}
+
+	var reason string
+	switch resp.RevocationReason {
+	case 0:
+		reason = "Unspecified"
+	case 1:
+		reason = "KeyCompromise"
+	case 2:
+		reason = "CACompromise"
+	case 3:
+		reason = "AffiliationChanged"
+	case 4:
+		reason = "Superseded"
+	case 5:
+		reason = "CessationOfOperation"
+	case 6:
+		reason = "CertificateHold"
+	case 8:
+		reason = "RemoveFromCRL"
+	case 9:
+		reason = "PrivilegeWithdrawn"
+	case 10:
+		reason = "AACompromise"
+	default:
+		reason = fmt.Sprintf("unexpected value: %d", resp.RevocationReason)
+	}
+	log.Printf("Reason: %s\n", reason)
 	return nil
 }
 
