@@ -29,6 +29,8 @@ import (
 var (
 	destURL  = flag.String("url", "", "url to check")
 	certPath = flag.String("pem", "", "pem to check")
+	respURL  = flag.String("responder", "", "responder to use")
+	nostaple = flag.Bool("nostaple", false, "ignore staples")
 
 	authorityInfoAccess = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 1, 1}
 	aiaOCSP             = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 48, 1}
@@ -99,7 +101,13 @@ func grabServerCert(connState *tls.ConnectionState) *x509.Certificate {
 }
 
 func manualCheck(ee *x509.Certificate, issuer *x509.Certificate) error {
-	ocspURL := ee.OCSPServer[0]
+	var ocspURL string
+	if respURL != nil && *respURL != "" {
+		ocspURL = *respURL
+	} else {
+		ocspURL = ee.OCSPServer[0]
+	}
+
 	log.Printf("Server: %v\n", ee.Subject.CommonName)
 	log.Printf("Issuer: %v\n", issuer.Subject.CommonName)
 	log.Printf("OCSP URL: %v\n", ocspURL)
@@ -189,9 +197,9 @@ func processURL() error {
 	issuer := grabIssuerCert(connState)
 	staple := connState.OCSPResponse
 
-	if staple == nil {
+	if staple == nil || (nostaple != nil && *nostaple) {
 		// manually check revocation
-		log.Println("manual check")
+		log.Println("remote check")
 		return manualCheck(server, issuer)
 	}
 
