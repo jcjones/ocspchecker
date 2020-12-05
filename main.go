@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ var (
 	certPath = flag.String("pem", "", "pem to check")
 	respURL  = flag.String("responder", "", "responder to use")
 	nostaple = flag.Bool("nostaple", false, "ignore staples")
+	dump = flag.Bool("dump", false, "dump raw bytes")
 
 	authorityInfoAccess = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 1, 1}
 	aiaOCSP             = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 48, 1}
@@ -116,6 +118,18 @@ func manualCheck(ee *x509.Certificate, issuer *x509.Certificate) error {
 	if err != nil {
 		return fmt.Errorf("error creating ocsp request: %v", err)
 	}
+
+	if dump != nil && *dump {
+		block := &pem.Block{
+			Type: "OCSP Request",
+			Bytes: ocspReq,
+		}
+
+		if err := pem.Encode(os.Stdout, block); err != nil {
+			return err
+		}
+	}
+
 	body := bytes.NewReader(ocspReq)
 	req, err := http.NewRequest("POST", ocspURL, body)
 	if err != nil {
@@ -135,6 +149,17 @@ func manualCheck(ee *x509.Certificate, issuer *x509.Certificate) error {
 }
 
 func parseResponse(response []byte, issuer *x509.Certificate) error {
+	if dump != nil && *dump {
+		block := &pem.Block{
+			Type: "OCSP Response",
+			Bytes: response,
+		}
+
+		if err := pem.Encode(os.Stdout, block); err != nil {
+			return err
+		}
+	}
+
 	resp, err := ocsp.ParseResponse(response, issuer)
 	if err != nil {
 		return fmt.Errorf("error parsing response: %v", err)
